@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="smart_learning@localhost" uuid="ca1ac3ad-5588-40ef-83b0-ce4ca438f05c">
+    <data-source source="LOCAL" name="smart_learning@localhost" uuid="8904dd09-e163-4535-9de7-90e17b1be2df">
       <driver-ref>mariadb</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.mariadb.jdbc.Driver</jdbc-driver>

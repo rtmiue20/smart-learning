@@ -12,6 +12,7 @@ CREATE TABLE users (
                        password    VARCHAR(255)    NOT NULL,
                        full_name   VARCHAR(255)    NOT NULL,
                        role        VARCHAR(50)     NOT NULL,   -- STUDENT, TEACHER, PARENT, ADMIN
+                       active      BOOLEAN         NOT NULL DEFAULT TRUE,
                        created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
                        updated_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -19,15 +20,39 @@ CREATE TABLE users (
                        CONSTRAINT uq_users_email UNIQUE (email)
 );
 
--- Parent - Student relationship
-CREATE TABLE parent_student (
-                                parent_id   BIGINT  NOT NULL,
-                                student_id  BIGINT  NOT NULL,
+CREATE TABLE student_profiles (
+                                  user_id     BIGINT          NOT NULL,
+                                  grade       INT,
+                                  parent_id   BIGINT,
 
-                                CONSTRAINT pk_parent_student    PRIMARY KEY (parent_id, student_id),
-                                CONSTRAINT fk_ps_parent         FOREIGN KEY (parent_id)  REFERENCES users(id) ON DELETE CASCADE,
-                                CONSTRAINT fk_ps_student        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+                                  CONSTRAINT pk_student_profiles PRIMARY KEY (user_id),
+                                  CONSTRAINT fk_student_user     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE teacher_profiles (
+                                  user_id     BIGINT          NOT NULL,
+                                  bio         TEXT,
+
+                                  CONSTRAINT pk_teacher_profiles PRIMARY KEY (user_id),
+                                  CONSTRAINT fk_teacher_user     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE parent_profiles (
+                                 user_id     BIGINT          NOT NULL,
+
+                                 CONSTRAINT pk_parent_profiles  PRIMARY KEY (user_id),
+                                 CONSTRAINT fk_parent_user      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE admin_profiles (
+                                user_id     BIGINT          NOT NULL,
+
+                                CONSTRAINT pk_admin_profiles   PRIMARY KEY (user_id),
+                                CONSTRAINT fk_admin_user       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Note: student_profiles.parent_id already handles relationship, but let's keep it consistent
+ALTER TABLE student_profiles ADD CONSTRAINT fk_student_parent FOREIGN KEY (parent_id) REFERENCES users(id);
 
 -- ---------------------------------------------
 -- 2. COURSE (Subject → Chapter → Lesson)
@@ -70,16 +95,14 @@ CREATE TABLE lessons (
 CREATE TABLE documents (
                            id          BIGINT          NOT NULL AUTO_INCREMENT,
                            subject_id  BIGINT          NOT NULL,
-                           file_name   VARCHAR(255)    NOT NULL,
+                           title       VARCHAR(255)    NOT NULL,
                            file_path   VARCHAR(500)    NOT NULL,
                            file_size   BIGINT,
                            status      VARCHAR(50)     NOT NULL DEFAULT 'PENDING',  -- PENDING, PROCESSING, DONE, FAILED
-                           uploaded_by BIGINT          NOT NULL,
-                           created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           uploaded_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                            CONSTRAINT pk_documents         PRIMARY KEY (id),
-                           CONSTRAINT fk_docs_subject      FOREIGN KEY (subject_id)  REFERENCES subjects(id),
-                           CONSTRAINT fk_docs_uploader     FOREIGN KEY (uploaded_by) REFERENCES users(id)
+                           CONSTRAINT fk_docs_subject      FOREIGN KEY (subject_id)  REFERENCES subjects(id)
 );
 
 CREATE TABLE embedding_chunks (
@@ -101,12 +124,10 @@ CREATE TABLE quizzes (
                          id          BIGINT          NOT NULL AUTO_INCREMENT,
                          lesson_id   BIGINT          NOT NULL,
                          title       VARCHAR(255)    NOT NULL,
-                         created_by  BIGINT          NOT NULL,
                          created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                          CONSTRAINT pk_quizzes           PRIMARY KEY (id),
-                         CONSTRAINT fk_quizzes_lesson    FOREIGN KEY (lesson_id)  REFERENCES lessons(id) ON DELETE CASCADE,
-                         CONSTRAINT fk_quizzes_creator   FOREIGN KEY (created_by) REFERENCES users(id)
+                         CONSTRAINT fk_quizzes_lesson    FOREIGN KEY (lesson_id)  REFERENCES lessons(id) ON DELETE CASCADE
 );
 
 CREATE TABLE questions (
@@ -162,9 +183,9 @@ CREATE TABLE learning_progress (
                                    id              BIGINT          NOT NULL AUTO_INCREMENT,
                                    student_id      BIGINT          NOT NULL,
                                    lesson_id       BIGINT          NOT NULL,
-                                   is_completed    BOOLEAN         NOT NULL DEFAULT FALSE,
-                                   completed_at    DATETIME,
-                                   updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                   status          VARCHAR(50)     NOT NULL DEFAULT 'NOT_STARTED', -- NOT_STARTED, IN_PROGRESS, COMPLETED
+                                   completion_percent INT          NOT NULL DEFAULT 0,
+                                   last_accessed_at DATETIME,
 
                                    CONSTRAINT pk_learning_progress         PRIMARY KEY (id),
                                    CONSTRAINT uq_progress_student_lesson   UNIQUE (student_id, lesson_id),
@@ -178,13 +199,12 @@ CREATE TABLE learning_progress (
 CREATE TABLE chat_sessions (
                                id          BIGINT          NOT NULL AUTO_INCREMENT,
                                student_id  BIGINT          NOT NULL,
-                               subject_id  BIGINT          NOT NULL,
                                lesson_id   BIGINT,                     -- nullable: chat chung hoặc theo bài
+                               title       VARCHAR(255)    NOT NULL,
                                created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                                CONSTRAINT pk_chat_sessions         PRIMARY KEY (id),
                                CONSTRAINT fk_sessions_student      FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
-                               CONSTRAINT fk_sessions_subject      FOREIGN KEY (subject_id) REFERENCES subjects(id),
                                CONSTRAINT fk_sessions_lesson       FOREIGN KEY (lesson_id)  REFERENCES lessons(id)
 );
 
